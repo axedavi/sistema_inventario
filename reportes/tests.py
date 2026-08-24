@@ -161,3 +161,53 @@ class ExportarInventarioTests(ReportesTestBase):
     def test_formato_invalido_devuelve_400(self):
         respuesta = self.client.get(reverse('reportes:exportar_inventario'), {'formato': ''})
         self.assertEqual(respuesta.status_code, 400)
+
+
+class ReporteConsolidadoTests(ReportesTestBase):
+    """HU010: reporte consolidado de predicción con recomendación de reabastecimiento (RF016)."""
+
+    def setUp(self):
+        super().setUp()
+        StockAlmacen.objects.create(producto=self.producto, almacen=self.bodega_a, cantidad=Decimal('5'))
+        self.producto.lead_time_dias = 6
+        self.producto.stock_seguridad = Decimal('4')
+        self.producto.save()
+        for mes, cantidad in [(1, 30), (2, 30), (3, 30)]:
+            self._crear_movimiento(
+                Movimiento.SALIDA, self.producto, cantidad,
+                timezone.make_aware(datetime(2026, mes, 5)), almacen_origen=self.bodega_a,
+            )
+
+    def test_acceso_sin_login_redirige_a_login(self):
+        self.client.logout()
+        respuesta = self.client.get(reverse('reportes:consolidado'))
+        self.assertEqual(respuesta.status_code, 302)
+        self.assertIn(reverse('usuarios:login'), respuesta.url)
+
+    def test_muestra_recomendacion_de_reponer_en_la_vista_previa(self):
+        respuesta = self.client.get(reverse('reportes:consolidado'))
+        filas = {f['producto'].codigo: f for f in respuesta.context['filas']}
+        self.assertEqual(filas['P001']['recomendacion'], 'Reponer')
+        self.assertContains(respuesta, 'Reponer')
+
+    def test_producto_sin_historial_aparece_como_datos_insuficientes(self):
+        respuesta = self.client.get(reverse('reportes:consolidado'))
+        filas = {f['producto'].codigo: f for f in respuesta.context['filas']}
+        self.assertEqual(filas['P002']['recomendacion'], 'Datos insuficientes')
+
+    def test_exportar_pdf_devuelve_content_type_correcto(self):
+        respuesta = self.client.get(reverse('reportes:exportar_consolidado'), {'formato': 'pdf'})
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(respuesta['Content-Type'], 'application/pdf')
+
+    def test_exportar_excel_devuelve_content_type_correcto(self):
+        respuesta = self.client.get(reverse('reportes:exportar_consolidado'), {'formato': 'excel'})
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(
+            respuesta['Content-Type'],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+
+    def test_formato_invalido_devuelve_400(self):
+        respuesta = self.client.get(reverse('reportes:exportar_consolidado'), {'formato': 'csv'})
+        self.assertEqual(respuesta.status_code, 400)

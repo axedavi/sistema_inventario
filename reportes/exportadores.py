@@ -127,3 +127,30 @@ def exportar_inventario(productos, formato):
     if formato == 'excel':
         return _respuesta_excel('reporte_inventario.xlsx', 'Inventario', encabezado, filas)
     return _respuesta_pdf('reporte_inventario.pdf', 'Reporte de Estado del Inventario', encabezado, filas)
+
+
+def exportar_consolidado(filas_prediccion, formato):
+    """RF016/RF017: reporte consolidado de predicción de stock, en PDF o Excel (HU010)."""
+    encabezado = [
+        'Código', 'Producto', 'Stock actual', 'Pronóstico SES',
+        'Punto de Reorden', 'Días hasta reorden', 'Recomendación',
+    ]
+
+    filas = []
+    for fila in filas_prediccion:
+        producto = fila['producto']
+        filas.append([
+            producto.codigo,
+            producto.nombre,
+            str(fila['stock_actual']),
+            str(fila['pronostico']) if fila['suficiente'] else '—',
+            str(fila['rop']) if fila['suficiente'] else '—',
+            str(fila['dias_hasta_reorden']) if fila['dias_hasta_reorden'] is not None else '—',
+            fila['recomendacion'],
+        ])
+
+    if formato == 'excel':
+        return _respuesta_excel('reporte_consolidado_prediccion.xlsx', 'Predicción', encabezado, filas)
+    return _respuesta_pdf(
+        'reporte_consolidado_prediccion.pdf', 'Reporte Consolidado de Predicción de Stock', encabezado, filas
+    )

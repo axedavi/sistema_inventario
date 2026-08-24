@@ -2,7 +2,9 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseBadRequest
 from django.shortcuts import render
 
-from .exportadores import exportar_inventario, exportar_movimientos
+from predicciones.services import consolidado_prediccion
+
+from .exportadores import exportar_consolidado, exportar_inventario, exportar_movimientos
 from .forms import FiltroInventarioForm, FiltroMovimientosForm
 from .services import construir_filas_inventario
 
@@ -43,3 +45,19 @@ def exportar_inventario_vista(request):
     form = FiltroInventarioForm(request.GET or None)
     productos = form.filtrar()
     return exportar_inventario(productos, formato)
+
+
+@login_required
+def reporte_consolidado(request):
+    """Reporte consolidado de predicción de stock, generado en un solo clic (HU010, RF016)."""
+    filas = consolidado_prediccion()
+    return render(request, 'reportes/consolidado.html', {'filas': filas})
+
+
+@login_required
+def exportar_consolidado_vista(request):
+    formato = request.GET.get('formato')
+    if formato not in ('pdf', 'excel'):
+        return HttpResponseBadRequest("Formato de exportación no soportado.")
+    filas = consolidado_prediccion()
+    return exportar_consolidado(filas, formato)

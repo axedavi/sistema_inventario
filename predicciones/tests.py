@@ -14,6 +14,7 @@ from .services import (
     calcular_pronostico_ses,
     calcular_punto_reorden,
     calcular_rop_para_producto,
+    consolidado_prediccion,
     obtener_historial_mensual,
     ultimo_rop_por_producto,
 )
@@ -178,3 +179,60 @@ class UltimoRopPorProductoTests(TestCase):
 
         resultado = ultimo_rop_por_producto()
         self.assertEqual(resultado[self.producto.id], Decimal('25'))
+
+
+class ConsolidadoPrediccionTests(TestCase):
+    """CP-PRED (HU010): reporte consolidado con recomendación de reabastecimiento (RF016)."""
+
+    def setUp(self):
+        unidad = Unidad.objects.create(nombre='Unidad', abreviatura='u')
+        self.almacen = Almacen.objects.create(nombre='Bodega A')
+
+        self.con_historial = Producto.objects.create(
+            codigo='P001', nombre='Con historial', unidad=unidad,
+            alpha=Decimal('0.5'), lead_time_dias=6, stock_seguridad=Decimal('4'),
+        )
+        self.sin_historial = Producto.objects.create(codigo='P002', nombre='Sin historial', unidad=unidad)
+
+    def _crear_salida(self, producto, cantidad, fecha):
+        mov = Movimiento.objects.create(
+            tipo=Movimiento.SALIDA, producto=producto,
+            almacen_origen=self.almacen, cantidad=Decimal(str(cantidad)),
+        )
+        Movimiento.objects.filter(pk=mov.pk).update(fecha=fecha)
+
+    def test_producto_sin_historial_suficiente_marca_datos_insuficientes(self):
+        filas = {f['producto'].codigo: f for f in consolidado_prediccion()}
+        self.assertFalse(filas['P002']['suficiente'])
+        self.assertEqual(filas['P002']['recomendacion'], 'Datos insuficientes')
+
+    def test_recomienda_reponer_cuando_stock_es_menor_o_igual_al_rop(self):
+        from almacenes.models import StockAlmacen
+        StockAlmacen.objects.create(producto=self.con_historial, almacen=self.almacen, cantidad=Decimal('5'))
+        for mes, cantidad in [(1, 30), (2, 30), (3, 30)]:
+            self._crear_salida(self.con_historial, cantidad, timezone.make_aware(datetime(2026, mes, 5)))
+
+        filas = {f['producto'].codigo: f for f in consolidado_prediccion()}
+        fila = filas['P001']
+        # demanda diaria pronosticada = 1.0, ROP = 1.0*6+4 = 10; stock = 5 <= 10.
+        self.assertEqual(fila['rop'], 10.0)
+        self.assertEqual(fila['recomendacion'], 'Reponer')
+        self.assertEqual(fila['dias_hasta_reorden'], 0)
+
+    def test_recomienda_stock_suficiente_y_calcula_dias_hasta_reorden(self):
+        from almacenes.models import StockAlmacen
+        StockAlmacen.objects.create(producto=self.con_historial, almacen=self.almacen, cantidad=Decimal('40'))
+        for mes, cantidad in [(1, 30), (2, 30), (3, 30)]:
+            self._crear_salida(self.con_historial, cantidad, timezone.make_aware(datetime(2026, mes, 5)))
+
+        filas = {f['producto'].codigo: f for f in consolidado_prediccion()}
+        fila = filas['P001']
+        # ROP=10, stock=40, demanda_diaria=1.0 -> dias = (40-10)/1.0 = 30.0
+        self.assertEqual(fila['recomendacion'], 'Stock suficiente')
+        self.assertEqual(fila['dias_hasta_reorden'], 30.0)
+
+    def test_consolidado_no_persiste_en_prediccionstock(self):
+        for mes, cantidad in [(1, 30), (2, 30), (3, 30)]:
+            self._crear_salida(self.con_historial, cantidad, timezone.make_aware(datetime(2026, mes, 5)))
+        consolidado_prediccion()
+        self.assertFalse(PrediccionStock.objects.exists())

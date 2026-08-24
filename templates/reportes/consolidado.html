@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Reporte Consolidado de Predicción{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0"><i class="bi bi-clipboard2-data"></i> Reporte Consolidado de Predicción de Stock</h3>
+    <div>
+        <a href="{% url 'reportes:panel' %}" class="btn btn-outline-secondary btn-sm">← Volver a reportes</a>
+        <a href="{% url 'reportes:exportar_consolidado' %}?formato=pdf" class="btn btn-outline-danger btn-sm"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+        <a href="{% url 'reportes:exportar_consolidado' %}?formato=excel" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+    </div>
+</div>
+<p class="text-muted">Pronóstico SES, Punto de Reorden y recomendación de reabastecimiento para todos los productos activos, calculado al momento.</p>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Código</th><th>Producto</th><th>Stock actual</th><th>Pronóstico SES</th>
+                    <th>Punto de Reorden</th><th>Días hasta reorden</th><th>Recomendación</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fila in filas %}
+                <tr class="{% if fila.recomendacion == 'Reponer' %}table-danger{% endif %}">
+                    <td>{{ fila.producto.codigo }}</td>
+                    <td><a href="{% url 'productos:detalle' fila.producto.pk %}">{{ fila.producto.nombre }}</a></td>
+                    <td>{{ fila.stock_actual }}</td>
+                    <td>{% if fila.suficiente %}{{ fila.pronostico }}{% else %}—{% endif %}</td>
+                    <td>{% if fila.suficiente %}{{ fila.rop }}{% else %}—{% endif %}</td>
+                    <td>{% if fila.dias_hasta_reorden is not None %}{{ fila.dias_hasta_reorden }}{% else %}—{% endif %}</td>
+                    <td>
+                        {% if fila.recomendacion == 'Reponer' %}
+                            <span class="badge bg-danger">Reponer</span>
+                        {% elif fila.recomendacion == 'Stock suficiente' %}
+                            <span class="badge bg-success">Stock suficiente</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Datos insuficientes</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center text-muted py-4">No hay productos activos registrados.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
