@@ -6,4 +6,6 @@ app_name = 'reportes'
 
 urlpatterns = [
     path('', views.panel_reportes, name='panel'),
+    path('movimientos/exportar/', views.exportar_movimientos_vista, name='exportar_movimientos'),
+    path('inventario/exportar/', views.exportar_inventario_vista, name='exportar_inventario'),
 ]
