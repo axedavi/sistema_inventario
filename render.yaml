@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: predistock-loja
+    runtime: python
+    plan: free
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn inventarios.wsgi:application"
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.15"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: DATABASE_URL
+        sync: false
