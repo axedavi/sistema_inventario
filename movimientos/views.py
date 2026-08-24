@@ -25,7 +25,11 @@ def registrar_movimiento(request):
             movimiento = form.save(commit=False)
             movimiento.usuario = request.user
             try:
-                aplicar_movimiento(movimiento)
+                aplicar_movimiento(
+                    movimiento,
+                    nuevo_lote_numero=form.cleaned_data.get('nuevo_lote_numero'),
+                    nuevo_lote_vencimiento=form.cleaned_data.get('nuevo_lote_vencimiento'),
+                )
             except StockInsuficienteError as exc:
                 form.add_error(None, str(exc))
             else:
@@ -38,6 +42,18 @@ def registrar_movimiento(request):
 
 @login_required
 def lista_lotes(request):
-    """Trazabilidad de lotes (HU005/HU006, en construcción)."""
+    """Trazabilidad de lotes con alerta de vencimiento de umbral configurable (RF010)."""
+    try:
+        umbral_dias = int(request.GET.get('umbral', 30))
+    except ValueError:
+        umbral_dias = 30
+
     lotes = Lote.objects.select_related('producto')[:200]
-    return render(request, 'movimientos/lotes.html', {'lotes': lotes})
+    filas = [{
+        'lote': lote,
+        'cantidad_disponible': lote.cantidad_disponible,
+        'esta_vencido': lote.esta_vencido,
+        'proximo_a_vencer': lote.proximo_a_vencer(umbral_dias),
+    } for lote in lotes]
+
+    return render(request, 'movimientos/lotes.html', {'filas': filas, 'umbral_dias': umbral_dias})

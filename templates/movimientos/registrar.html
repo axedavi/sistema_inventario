@@ -30,14 +30,26 @@
                             {{ form.almacen_destino }}
                             {% if form.almacen_destino.errors %}<div class="text-danger small">{{ form.almacen_destino.errors|join:", " }}</div>{% endif %}
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Lote (opcional)</label>
+                        <div class="col-md-6" id="campo-lote-existente">
+                            <label class="form-label">{{ form.lote.label }}</label>
                             {{ form.lote }}
+                            {% if form.lote.errors %}<div class="text-danger small">{{ form.lote.errors|join:", " }}</div>{% endif %}
+                            <div class="form-text">En salidas y transferencias, si no eliges un lote se asigna automáticamente el más antiguo con existencia (FIFO).</div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Cantidad</label>
                             {{ form.cantidad }}
                             {% if form.cantidad.errors %}<div class="text-danger small">{{ form.cantidad.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6" id="campo-lote-nuevo-numero">
+                            <label class="form-label">{{ form.nuevo_lote_numero.label }}</label>
+                            {{ form.nuevo_lote_numero }}
+                            {% if form.nuevo_lote_numero.errors %}<div class="text-danger small">{{ form.nuevo_lote_numero.errors|join:", " }}</div>{% endif %}
+                            <div class="form-text">{{ form.nuevo_lote_numero.help_text }}</div>
+                        </div>
+                        <div class="col-md-6" id="campo-lote-nuevo-vencimiento">
+                            <label class="form-label">{{ form.nuevo_lote_vencimiento.label }}</label>
+                            {{ form.nuevo_lote_vencimiento }}
                         </div>
                         <div class="col-md-12">
                             <label class="form-label">Motivo / Observación (opcional)</label>
@@ -59,11 +71,18 @@
     const tipoSelect = document.getElementById('id_tipo');
     const campoOrigen = document.getElementById('campo-origen');
     const campoDestino = document.getElementById('campo-destino');
+    const campoLoteExistente = document.getElementById('campo-lote-existente');
+    const campoLoteNuevoNumero = document.getElementById('campo-lote-nuevo-numero');
+    const campoLoteNuevoVencimiento = document.getElementById('campo-lote-nuevo-vencimiento');
 
     function actualizarCampos() {
         const tipo = tipoSelect.value;
         campoOrigen.style.display = (tipo === 'S' || tipo === 'T') ? '' : 'none';
         campoDestino.style.display = (tipo === 'E' || tipo === 'T') ? '' : 'none';
+        // El lote existente aplica a salidas/transferencias; el lote nuevo solo a entradas.
+        campoLoteExistente.style.display = (tipo === 'S' || tipo === 'T') ? '' : 'none';
+        campoLoteNuevoNumero.style.display = (tipo === 'E') ? '' : 'none';
+        campoLoteNuevoVencimiento.style.display = (tipo === 'E') ? '' : 'none';
     }
 
     if (tipoSelect) {

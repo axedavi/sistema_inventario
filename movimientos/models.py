@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.db import models
 from django.contrib.auth.models import User
 from productos.models import Producto, Proveedor
@@ -25,9 +27,36 @@ class Lote(models.Model):
         verbose_name = "Lote"
         verbose_name_plural = "Lotes"
         ordering = ['-fecha_ingreso']
+        unique_together = ('producto', 'numero_lote')
 
     def __str__(self):
         return f"Lote {self.numero_lote} - {self.producto}"
+
+    @property
+    def cantidad_consumida(self):
+        total = self.movimiento_set.filter(
+            tipo__in=[Movimiento.SALIDA, Movimiento.TRANSFERENCIA]
+        ).aggregate(total=models.Sum('cantidad'))['total']
+        return total or 0
+
+    @property
+    def cantidad_disponible(self):
+        return self.cantidad_inicial - self.cantidad_consumida
+
+    @property
+    def dias_para_vencer(self):
+        if not self.fecha_vencimiento:
+            return None
+        return (self.fecha_vencimiento - date.today()).days
+
+    @property
+    def esta_vencido(self):
+        dias = self.dias_para_vencer
+        return dias is not None and dias < 0
+
+    def proximo_a_vencer(self, umbral_dias=30):
+        dias = self.dias_para_vencer
+        return dias is not None and 0 <= dias <= umbral_dias
 
 
 class Movimiento(models.Model):
@@ -63,7 +92,7 @@ class Movimiento(models.Model):
         verbose_name="Almacén destino"
     )
     lote = models.ForeignKey(
-        Lote, on_delete=models.SET_NULL,
+        Lote, on_delete=models.PROTECT,
         null=True, blank=True,
         verbose_name="Lote"
     )
