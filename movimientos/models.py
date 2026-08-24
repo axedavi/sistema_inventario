@@ -31,11 +31,15 @@ class Lote(models.Model):
 
 
 class Movimiento(models.Model):
+    ENTRADA = 'E'
+    SALIDA = 'S'
+    TRANSFERENCIA = 'T'
+    AJUSTE = 'A'
     TIPO_CHOICES = [
-        ('E', 'Entrada'),
-        ('S', 'Salida'),
-        ('T', 'Transferencia'),
-        ('A', 'Ajuste'),
+        (ENTRADA, 'Entrada'),
+        (SALIDA, 'Salida'),
+        (TRANSFERENCIA, 'Transferencia'),
+        (AJUSTE, 'Ajuste'),
     ]
 
     tipo = models.CharField(

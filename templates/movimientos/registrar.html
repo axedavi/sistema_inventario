@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Registrar movimiento{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <h3><i class="bi bi-arrow-left-right"></i> Registrar Movimiento de Inventario</h3>
+        <div class="card shadow-sm">
+            <div class="card-body">
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">{{ form.non_field_errors|join:" " }}</div>
+                {% endif %}
+                <form method="post" id="form-movimiento" novalidate>
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Tipo de movimiento</label>
+                            {{ form.tipo }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Producto</label>
+                            {{ form.producto }}
+                        </div>
+                        <div class="col-md-6" id="campo-origen">
+                            <label class="form-label">Almacén origen</label>
+                            {{ form.almacen_origen }}
+                            {% if form.almacen_origen.errors %}<div class="text-danger small">{{ form.almacen_origen.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6" id="campo-destino">
+                            <label class="form-label">Almacén destino</label>
+                            {{ form.almacen_destino }}
+                            {% if form.almacen_destino.errors %}<div class="text-danger small">{{ form.almacen_destino.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Lote (opcional)</label>
+                            {{ form.lote }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Cantidad</label>
+                            {{ form.cantidad }}
+                            {% if form.cantidad.errors %}<div class="text-danger small">{{ form.cantidad.errors|join:", " }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Motivo / Observación (opcional)</label>
+                            {{ form.motivo }}
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary mt-4"><i class="bi bi-check2"></i> Registrar</button>
+                    <a href="{% url 'movimientos:lista' %}" class="btn btn-outline-secondary mt-4">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Muestra solo el/los almacén(es) relevante(s) según el tipo de movimiento.
+    const tipoSelect = document.getElementById('id_tipo');
+    const campoOrigen = document.getElementById('campo-origen');
+    const campoDestino = document.getElementById('campo-destino');
+
+    function actualizarCampos() {
+        const tipo = tipoSelect.value;
+        campoOrigen.style.display = (tipo === 'S' || tipo === 'T') ? '' : 'none';
+        campoDestino.style.display = (tipo === 'E' || tipo === 'T') ? '' : 'none';
+    }
+
+    if (tipoSelect) {
+        tipoSelect.addEventListener('change', actualizarCampos);
+        actualizarCampos();
+    }
+</script>
+{% endblock %}
