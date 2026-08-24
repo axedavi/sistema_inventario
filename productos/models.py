@@ -1,3 +1,6 @@
+from decimal import Decimal
+
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 
@@ -78,6 +81,12 @@ class Producto(models.Model):
     stock_seguridad = models.DecimalField(
         max_digits=10, decimal_places=2,
         default=0, verbose_name="Stock de seguridad"
+    )
+    alpha = models.DecimalField(
+        max_digits=5, decimal_places=4, default=Decimal('0.3000'),
+        validators=[MinValueValidator(Decimal('0.0001')), MaxValueValidator(Decimal('1.0000'))],
+        verbose_name="Alpha (SES)",
+        help_text="Parámetro de suavizamiento exponencial simple, entre 0 y 1 (RF013)."
     )
     activo = models.BooleanField(default=True, verbose_name="Activo")
     creado_en = models.DateTimeField(auto_now_add=True)

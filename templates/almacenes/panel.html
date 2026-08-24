@@ -48,7 +48,7 @@
                     data-categoria="{{ fila.producto.categoria_id|default:'' }}"
                     data-texto="{{ fila.producto.codigo|lower }} {{ fila.producto.nombre|lower }}">
                     <td>{{ fila.producto.codigo }}</td>
-                    <td>{{ fila.producto.nombre }}</td>
+                    <td><a href="{% url 'productos:detalle' fila.producto.pk %}">{{ fila.producto.nombre }}</a></td>
                     <td>{{ fila.producto.categoria|default:"—" }}</td>
                     <td class="fw-bold">{{ fila.stock_total }} {{ fila.producto.unidad.abreviatura }}</td>
                     <td>

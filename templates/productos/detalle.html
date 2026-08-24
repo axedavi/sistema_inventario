@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}{{ producto.nombre }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0"><i class="bi bi-box-seam"></i> {{ producto.codigo }} — {{ producto.nombre }}</h3>
+    <a href="{% url 'almacenes:panel' %}" class="btn btn-outline-secondary btn-sm">← Volver al panel</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <div class="text-muted small">Categoría / Unidad</div>
+                <div class="fw-bold">{{ producto.categoria|default:"—" }} / {{ producto.unidad|default:"—" }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <div class="text-muted small">Stock total (todos los almacenes)</div>
+                <div class="fw-bold fs-4">{{ stock_total }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <div class="text-muted small">Stock mínimo / seguridad</div>
+                <div class="fw-bold">{{ producto.stock_minimo }} / {{ producto.stock_seguridad }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <div class="text-muted small">Proveedor</div>
+                <div class="fw-bold">{{ producto.proveedor|default:"—" }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white"><i class="bi bi-hdd-stack"></i> Stock por almacén</div>
+            <ul class="list-group list-group-flush">
+                {% for s in stocks_por_almacen %}
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>{{ s.almacen.nombre }}</span>
+                        <span class="fw-bold">{{ s.cantidad }}</span>
+                    </li>
+                {% empty %}
+                    <li class="list-group-item text-muted">Sin stock registrado en ningún almacén.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white"><i class="bi bi-graph-up-arrow"></i> Predicción de demanda (SES)</div>
+            <div class="card-body">
+                {% if prediccion.suficiente %}
+                    <p class="mb-1 text-muted small">Alpha configurado: {{ prediccion.alpha }}</p>
+                    <p class="mb-2">Demanda pronosticada para el siguiente período:</p>
+                    <div class="display-6 text-primary fw-bold">{{ prediccion.pronostico }}</div>
+                    <p class="text-muted small mt-3 mb-1">Historial mensual de salidas usado (últimos {{ prediccion.historial|length }} meses):</p>
+                    <ul class="small">
+                        {% for mes, total in prediccion.historial %}
+                            <li>{{ mes|date:"F Y" }}: {{ total }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="alert alert-warning mb-0">
+                        <i class="bi bi-info-circle"></i>
+                        Este producto tiene {{ prediccion.historial|length }} período(s) con salidas registradas.
+                        Se necesitan al menos {{ minimo_registros }} para calcular un pronóstico confiable con SES.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

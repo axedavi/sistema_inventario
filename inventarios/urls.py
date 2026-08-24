@@ -12,6 +12,7 @@ urlpatterns = [
     path('', RedirectView.as_view(pattern_name='almacenes:panel', permanent=False)),
     path('usuarios/', include('usuarios.urls')),
     path('inventario/', include('almacenes.urls')),
+    path('productos/', include('productos.urls')),
     path('movimientos/', include('movimientos.urls')),
     path('prediccion/', include('predicciones.urls')),
     path('reportes/', include('reportes.urls')),

@@ -24,7 +24,8 @@ class ProveedorAdmin(admin.ModelAdmin):
 
 @admin.register(Producto)
 class ProductoAdmin(admin.ModelAdmin):
-    list_display = ['codigo', 'nombre', 'categoria', 'unidad', 'proveedor', 'stock_minimo', 'activo']
+    list_display = ['codigo', 'nombre', 'categoria', 'unidad', 'proveedor', 'stock_minimo', 'alpha', 'activo']
+    list_editable = ['alpha']
     search_fields = ['codigo', 'nombre']
     list_filter = ['categoria', 'activo']
     autocomplete_fields = ['categoria', 'unidad', 'proveedor']
