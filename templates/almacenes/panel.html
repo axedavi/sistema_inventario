@@ -5,20 +5,31 @@
     <h3 class="mb-0"><i class="bi bi-clipboard-data"></i> Panel de Inventario</h3>
 </div>
 
-<form method="get" class="row g-2 mb-3">
+<div class="row g-2 mb-3">
     <div class="col-auto">
-        <select name="almacen" class="form-select" onchange="this.form.submit()">
+        <select id="filtro-almacen" class="form-select">
             <option value="">Todos los almacenes</option>
             {% for a in almacenes %}
-                <option value="{{ a.id }}" {% if almacen_seleccionado == a.id|stringformat:"s" %}selected{% endif %}>{{ a.nombre }}</option>
+                <option value="{{ a.id }}">{{ a.nombre }}</option>
             {% endfor %}
         </select>
     </div>
-</form>
+    <div class="col-auto">
+        <select id="filtro-categoria" class="form-select">
+            <option value="">Todas las categorías</option>
+            {% for cat in categorias %}
+                <option value="{{ cat.id }}">{{ cat.nombre }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-auto">
+        <input type="text" id="filtro-texto" class="form-control" placeholder="Buscar por código o nombre...">
+    </div>
+</div>
 
 <div class="card shadow-sm">
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+        <table class="table table-hover align-middle mb-0" id="tabla-inventario">
             <thead class="table-light">
                 <tr>
                     <th>Código</th>
@@ -32,7 +43,10 @@
             </thead>
             <tbody>
                 {% for fila in filas %}
-                <tr class="{% if fila.en_alerta %}table-danger{% endif %}">
+                <tr class="{% if fila.en_alerta %}table-danger{% endif %}"
+                    data-almacenes="{{ fila.almacenes_ids }}"
+                    data-categoria="{{ fila.producto.categoria_id|default:'' }}"
+                    data-texto="{{ fila.producto.codigo|lower }} {{ fila.producto.nombre|lower }}">
                     <td>{{ fila.producto.codigo }}</td>
                     <td>{{ fila.producto.nombre }}</td>
                     <td>{{ fila.producto.categoria|default:"—" }}</td>
@@ -58,6 +72,44 @@
                 {% endfor %}
             </tbody>
         </table>
+        <p id="sin-resultados" class="text-center text-muted py-4 d-none">Ningún producto coincide con los filtros aplicados.</p>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Filtrado 100% en el cliente: no recarga la página (HU004).
+    const filtroAlmacen = document.getElementById('filtro-almacen');
+    const filtroCategoria = document.getElementById('filtro-categoria');
+    const filtroTexto = document.getElementById('filtro-texto');
+    const filas = document.querySelectorAll('#tabla-inventario tbody tr[data-almacenes], #tabla-inventario tbody tr[data-categoria]');
+    const sinResultados = document.getElementById('sin-resultados');
+
+    function aplicarFiltros() {
+        const almacen = filtroAlmacen.value;
+        const categoria = filtroCategoria.value;
+        const texto = filtroTexto.value.trim().toLowerCase();
+        let visibles = 0;
+
+        filas.forEach(fila => {
+            const almacenesFila = (fila.dataset.almacenes || '').split(',');
+            const categoriaFila = fila.dataset.categoria || '';
+            const textoFila = fila.dataset.texto || '';
+
+            const coincideAlmacen = !almacen || almacenesFila.includes(almacen);
+            const coincideCategoria = !categoria || categoriaFila === categoria;
+            const coincideTexto = !texto || textoFila.includes(texto);
+
+            const visible = coincideAlmacen && coincideCategoria && coincideTexto;
+            fila.classList.toggle('d-none', !visible);
+            if (visible) visibles++;
+        });
+
+        sinResultados.classList.toggle('d-none', visibles !== 0 || filas.length === 0);
+    }
+
+    [filtroAlmacen, filtroCategoria].forEach(el => el.addEventListener('change', aplicarFiltros));
+    filtroTexto.addEventListener('input', aplicarFiltros);
+</script>
 {% endblock %}
