@@ -58,6 +58,15 @@ class Lote(models.Model):
         dias = self.dias_para_vencer
         return dias is not None and 0 <= dias <= umbral_dias
 
+    @property
+    def estado(self):
+        """Estado calculado del lote (HU006): Vencido, Agotado o Disponible."""
+        if self.esta_vencido:
+            return 'Vencido'
+        if self.cantidad_disponible <= 0:
+            return 'Agotado'
+        return 'Disponible'
+
 
 class Movimiento(models.Model):
     ENTRADA = 'E'

@@ -169,6 +169,83 @@ class RegistroLoteTests(TestCase):
             lote.delete()
 
 
+class DetalleLoteTests(TestCase):
+    """CP-LOT-02/HU006: consulta del historial completo de un lote (RF009)."""
+
+    def setUp(self):
+        self.usuario = User.objects.create_user('operador', password='Cl4v3Segura#88')
+        self.client.login(username='operador', password='Cl4v3Segura#88')
+
+        self.unidad = Unidad.objects.create(nombre='Unidad', abreviatura='u')
+        self.producto = Producto.objects.create(codigo='P001', nombre='Tela algodón', unidad=self.unidad)
+        self.bodega_a = Almacen.objects.create(nombre='Bodega A')
+
+    def test_acceso_sin_login_redirige_a_login(self):
+        lote = Lote.objects.create(
+            producto=self.producto, numero_lote='L1', fecha_ingreso=date.today(), cantidad_inicial=10
+        )
+        self.client.logout()
+        respuesta = self.client.get(reverse('movimientos:detalle_lote', args=[lote.pk]))
+        self.assertEqual(respuesta.status_code, 302)
+        self.assertIn(reverse('usuarios:login'), respuesta.url)
+
+    def test_lote_inexistente_devuelve_404(self):
+        respuesta = self.client.get(reverse('movimientos:detalle_lote', args=[9999]))
+        self.assertEqual(respuesta.status_code, 404)
+
+    def test_historial_muestra_entrada_que_origino_el_lote_y_sus_salidas(self):
+        self._crear_lote_por_entrada(cantidad='20', numero='L-HIST')
+        lote = Lote.objects.get(numero_lote='L-HIST')
+
+        self._post({
+            'tipo': Movimiento.SALIDA, 'producto': self.producto.id,
+            'almacen_origen': self.bodega_a.id, 'cantidad': '6', 'lote': lote.id,
+        })
+
+        respuesta = self.client.get(reverse('movimientos:detalle_lote', args=[lote.pk]))
+        tipos = sorted(m.get_tipo_display() for m in respuesta.context['movimientos'])
+        self.assertEqual(tipos, ['Entrada', 'Salida'])
+        self.assertContains(respuesta, 'operador')
+
+    def test_estado_disponible_agotado_y_vencido(self):
+        disponible = Lote.objects.create(
+            producto=self.producto, numero_lote='L-DISP', fecha_ingreso=date.today(), cantidad_inicial=10
+        )
+        self.assertEqual(disponible.estado, 'Disponible')
+
+        agotado = Lote.objects.create(
+            producto=self.producto, numero_lote='L-AGOT', fecha_ingreso=date.today(), cantidad_inicial=5
+        )
+        StockAlmacen.objects.create(producto=self.producto, almacen=self.bodega_a, cantidad=Decimal('5'))
+        self._post({
+            'tipo': Movimiento.SALIDA, 'producto': self.producto.id,
+            'almacen_origen': self.bodega_a.id, 'cantidad': '5', 'lote': agotado.id,
+        })
+        agotado.refresh_from_db()
+        self.assertEqual(agotado.estado, 'Agotado')
+
+        vencido = Lote.objects.create(
+            producto=self.producto, numero_lote='L-VENC', fecha_ingreso=date.today(),
+            fecha_vencimiento=date.today() - timedelta(days=1), cantidad_inicial=10,
+        )
+        self.assertEqual(vencido.estado, 'Vencido')
+
+    def test_pagina_de_lotes_permite_buscar_por_numero(self):
+        Lote.objects.create(producto=self.producto, numero_lote='ABC123', fecha_ingreso=date.today(), cantidad_inicial=10)
+        respuesta = self.client.get(reverse('movimientos:lotes'))
+        self.assertContains(respuesta, 'data-numero-lote="abc123"')
+
+    def _crear_lote_por_entrada(self, cantidad, numero):
+        self._post({
+            'tipo': Movimiento.ENTRADA, 'producto': self.producto.id,
+            'almacen_destino': self.bodega_a.id, 'cantidad': cantidad,
+            'nuevo_lote_numero': numero,
+        })
+
+    def _post(self, data):
+        return self.client.post(reverse('movimientos:registrar'), data, follow=True)
+
+
 class LoteVencimientoTests(TestCase):
     """CP-LOT: alerta de lotes próximos a vencer con umbral configurable (RF010)."""
 

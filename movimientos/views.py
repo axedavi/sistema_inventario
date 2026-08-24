@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import MovimientoForm
 from .models import Lote, Movimiento
@@ -57,3 +57,13 @@ def lista_lotes(request):
     } for lote in lotes]
 
     return render(request, 'movimientos/lotes.html', {'filas': filas, 'umbral_dias': umbral_dias})
+
+
+@login_required
+def detalle_lote(request, pk):
+    """Historial completo de un lote: movimientos asociados y estado actual (HU006, RF009)."""
+    lote = get_object_or_404(Lote.objects.select_related('producto'), pk=pk)
+    movimientos = lote.movimiento_set.select_related(
+        'almacen_origen', 'almacen_destino', 'usuario'
+    ).order_by('-fecha')
+    return render(request, 'movimientos/detalle_lote.html', {'lote': lote, 'movimientos': movimientos})

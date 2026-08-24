@@ -4,35 +4,33 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h3 class="mb-0"><i class="bi bi-upc-scan"></i> Trazabilidad por Lotes</h3>
 </div>
-<p class="text-muted">La consulta del historial completo de un lote (HU006) se implementa en el Sprint 5. Los lotes se crean automáticamente al registrar una entrada con "Número de lote nuevo".</p>
+<p class="text-muted">Los lotes se crean automáticamente al registrar una entrada con "Número de lote nuevo". Haz clic en un lote para ver su historial completo.</p>
 
-<form method="get" class="row g-2 mb-3 align-items-center">
+<div class="row g-2 mb-3 align-items-center">
     <div class="col-auto">
+        <input type="text" id="buscar-lote" class="form-control" placeholder="Buscar por número de lote..." style="width: 16rem;">
+    </div>
+    <form method="get" class="col-auto d-flex align-items-center gap-2">
         <label class="col-form-label">Alertar vencimiento en los próximos</label>
-    </div>
-    <div class="col-auto">
         <input type="number" name="umbral" min="0" value="{{ umbral_dias }}" class="form-control" style="width: 6rem;">
-    </div>
-    <div class="col-auto">
         <span class="col-form-label">días</span>
-    </div>
-    <div class="col-auto">
         <button type="submit" class="btn btn-outline-secondary btn-sm">Aplicar</button>
-    </div>
-</form>
+    </form>
+</div>
 
 <div class="card shadow-sm">
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+        <table class="table table-hover align-middle mb-0" id="tabla-lotes">
             <thead class="table-light">
                 <tr>
                     <th>Número de lote</th><th>Producto</th><th>Fecha ingreso</th><th>Fecha vencimiento</th>
-                    <th>Cantidad inicial</th><th>Disponible</th><th>Estado</th>
+                    <th>Cantidad inicial</th><th>Disponible</th><th>Estado</th><th></th>
                 </tr>
             </thead>
             <tbody>
                 {% for fila in filas %}
-                <tr class="{% if fila.esta_vencido %}table-danger{% elif fila.proximo_a_vencer %}table-warning{% endif %}">
+                <tr class="{% if fila.esta_vencido %}table-danger{% elif fila.proximo_a_vencer %}table-warning{% endif %}"
+                    data-numero-lote="{{ fila.lote.numero_lote|lower }}">
                     <td>{{ fila.lote.numero_lote }}</td>
                     <td>{{ fila.lote.producto }}</td>
                     <td>{{ fila.lote.fecha_ingreso|date:"d/m/Y" }}</td>
@@ -48,12 +46,27 @@
                             <span class="badge bg-success">Vigente</span>
                         {% endif %}
                     </td>
+                    <td><a href="{% url 'movimientos:detalle_lote' fila.lote.pk %}" class="btn btn-sm btn-outline-primary">Ver historial</a></td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="7" class="text-center text-muted py-4">Todavía no hay lotes registrados.</td></tr>
+                <tr><td colspan="8" class="text-center text-muted py-4">Todavía no hay lotes registrados.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const buscador = document.getElementById('buscar-lote');
+    const filas = document.querySelectorAll('#tabla-lotes tbody tr[data-numero-lote]');
+    buscador.addEventListener('input', () => {
+        const texto = buscador.value.trim().toLowerCase();
+        filas.forEach(fila => {
+            const coincide = !texto || fila.dataset.numeroLote.includes(texto);
+            fila.classList.toggle('d-none', !coincide);
+        });
+    });
+</script>
 {% endblock %}
