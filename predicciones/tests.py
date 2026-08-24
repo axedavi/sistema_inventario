@@ -8,7 +8,15 @@ from almacenes.models import Almacen
 from movimientos.models import Movimiento
 from productos.models import Producto, Unidad
 
-from .services import MINIMO_REGISTROS_HISTORICOS, calcular_pronostico_ses, obtener_historial_mensual
+from .models import PrediccionStock
+from .services import (
+    MINIMO_REGISTROS_HISTORICOS,
+    calcular_pronostico_ses,
+    calcular_punto_reorden,
+    calcular_rop_para_producto,
+    obtener_historial_mensual,
+    ultimo_rop_por_producto,
+)
 
 
 class HistorialMensualTests(TestCase):
@@ -95,3 +103,78 @@ class CalcularPronosticoSesTests(TestCase):
         resultado_estable = calcular_pronostico_ses(self.producto)
 
         self.assertNotEqual(resultado_reactivo['pronostico'], resultado_estable['pronostico'])
+
+
+class CalcularRopTests(TestCase):
+    """CP-PRED-03/HU008: cálculo del Punto de Reorden y su persistencia (RF012)."""
+
+    def setUp(self):
+        unidad = Unidad.objects.create(nombre='Unidad', abreviatura='u')
+        self.producto = Producto.objects.create(
+            codigo='P001', nombre='Tela', unidad=unidad,
+            alpha=Decimal('0.5'), lead_time_dias=6, stock_seguridad=Decimal('4'),
+        )
+        self.almacen = Almacen.objects.create(nombre='Bodega A')
+
+    def _crear_salida(self, cantidad, fecha):
+        mov = Movimiento.objects.create(
+            tipo=Movimiento.SALIDA, producto=self.producto,
+            almacen_origen=self.almacen, cantidad=Decimal(str(cantidad)),
+        )
+        Movimiento.objects.filter(pk=mov.pk).update(fecha=fecha)
+
+    def test_formula_rop(self):
+        self.assertEqual(calcular_punto_reorden(2.5, 6, 4), 19.0)
+
+    def test_sin_historial_suficiente_no_calcula_ni_guarda(self):
+        resultado = calcular_rop_para_producto(self.producto)
+        self.assertFalse(resultado['suficiente'])
+        self.assertIsNone(resultado['rop'])
+        self.assertFalse(PrediccionStock.objects.exists())
+
+    def test_calcula_y_guarda_rop_con_historial_suficiente(self):
+        for mes, cantidad in [(1, 30), (2, 30), (3, 30)]:
+            self._crear_salida(cantidad, timezone.make_aware(datetime(2026, mes, 5)))
+
+        resultado = calcular_rop_para_producto(self.producto)
+        self.assertTrue(resultado['suficiente'])
+        # demanda mensual pronosticada = 30 -> diaria = 1.0 -> ROP = 1.0*6 + 4 = 10.0
+        self.assertEqual(resultado['demanda_diaria'], 1.0)
+        self.assertEqual(resultado['rop'], 10.0)
+
+        prediccion = PrediccionStock.objects.get()
+        self.assertEqual(prediccion.producto, self.producto)
+        self.assertEqual(prediccion.punto_reorden, Decimal('10.0'))
+
+    def test_guardar_false_no_persiste(self):
+        for mes, cantidad in [(1, 30), (2, 30), (3, 30)]:
+            self._crear_salida(cantidad, timezone.make_aware(datetime(2026, mes, 5)))
+        calcular_rop_para_producto(self.producto, guardar=False)
+        self.assertFalse(PrediccionStock.objects.exists())
+
+
+class UltimoRopPorProductoTests(TestCase):
+    """El panel de inventario debe leer el último ROP calculado por producto (HU004 + HU008)."""
+
+    def setUp(self):
+        unidad = Unidad.objects.create(nombre='Unidad', abreviatura='u')
+        self.producto = Producto.objects.create(codigo='P001', nombre='Tela', unidad=unidad)
+
+    def test_sin_predicciones_no_hay_entrada_para_el_producto(self):
+        self.assertEqual(ultimo_rop_por_producto(), {})
+
+    def test_devuelve_el_rop_mas_reciente_por_producto(self):
+        antigua = PrediccionStock.objects.create(
+            producto=self.producto, alpha_utilizado=Decimal('0.3'),
+            demanda_pronosticada=Decimal('10'), punto_reorden=Decimal('20'),
+        )
+        PrediccionStock.objects.filter(pk=antigua.pk).update(
+            fecha_calculo=timezone.now() - timezone.timedelta(days=5)
+        )
+        PrediccionStock.objects.create(
+            producto=self.producto, alpha_utilizado=Decimal('0.3'),
+            demanda_pronosticada=Decimal('12'), punto_reorden=Decimal('25'),
+        )
+
+        resultado = ultimo_rop_por_producto()
+        self.assertEqual(resultado[self.producto.id], Decimal('25'))

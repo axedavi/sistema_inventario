@@ -37,7 +37,7 @@
                     <th>Categoría</th>
                     <th>Stock total</th>
                     <th>Detalle por almacén</th>
-                    <th>Stock mínimo</th>
+                    <th>Punto de Reorden</th>
                     <th>Estado</th>
                 </tr>
             </thead>
@@ -58,7 +58,13 @@
                             <span class="text-muted">Sin stock registrado</span>
                         {% endfor %}
                     </td>
-                    <td>{{ fila.producto.stock_minimo }}</td>
+                    <td>
+                        {% if fila.rop is not None %}
+                            {{ fila.rop }}
+                        {% else %}
+                            <span class="text-muted" title="Todavía no se ha calculado el ROP para este producto">{{ fila.producto.stock_minimo }} (mínimo)</span>
+                        {% endif %}
+                    </td>
                     <td>
                         {% if fila.en_alerta %}
                             <span class="badge bg-danger"><i class="bi bi-exclamation-triangle"></i> Reabastecer</span>

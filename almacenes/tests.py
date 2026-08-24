@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
+from predicciones.models import PrediccionStock
 from productos.models import Categoria, Producto, Unidad
 
 from .models import Almacen, StockAlmacen
@@ -55,3 +56,20 @@ class PanelInventarioTests(TestCase):
         contenido = respuesta.content.decode('utf-8')
         self.assertIn(f'data-almacenes="{self.bodega_a.id}"', contenido)
         self.assertIn(f'data-categoria="{self.categoria.id}"', contenido)
+
+    def test_panel_usa_el_rop_calculado_en_vez_del_stock_minimo_cuando_existe(self):
+        # P002 tiene 35 de stock total y stock_minimo=5 (sin alerta), pero si
+        # existe un ROP calculado de 40, el panel debe usar ese valor (HU008).
+        PrediccionStock.objects.create(
+            producto=self.producto_normal, alpha_utilizado=Decimal('0.3'),
+            demanda_pronosticada=Decimal('30'), punto_reorden=Decimal('40'),
+        )
+        respuesta = self.client.get(reverse('almacenes:panel'))
+        filas = {f['producto'].codigo: f for f in respuesta.context['filas']}
+        self.assertEqual(filas['P002']['rop'], Decimal('40'))
+        self.assertTrue(filas['P002']['en_alerta'])
+
+    def test_panel_sin_rop_calculado_usa_stock_minimo_como_respaldo(self):
+        respuesta = self.client.get(reverse('almacenes:panel'))
+        filas = {f['producto'].codigo: f for f in respuesta.context['filas']}
+        self.assertIsNone(filas['P001']['rop'])

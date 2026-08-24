@@ -42,10 +42,10 @@ class DetalleProductoTests(TestCase):
 
     def test_avisa_datos_insuficientes_sin_historial_de_salidas(self):
         respuesta = self.client.get(reverse('productos:detalle', args=[self.producto.pk]))
-        self.assertFalse(respuesta.context['prediccion']['suficiente'])
+        self.assertFalse(respuesta.context['resultado_rop']['suficiente'])
         self.assertContains(respuesta, "Se necesitan al menos")
 
-    def test_muestra_pronostico_con_historial_suficiente(self):
+    def test_muestra_pronostico_y_rop_con_historial_suficiente(self):
         for mes, cantidad in [(1, 5), (2, 6), (3, 7)]:
             mov = Movimiento.objects.create(
                 tipo=Movimiento.SALIDA, producto=self.producto,
@@ -54,5 +54,22 @@ class DetalleProductoTests(TestCase):
             Movimiento.objects.filter(pk=mov.pk).update(fecha=timezone.make_aware(datetime(2026, mes, 5)))
 
         respuesta = self.client.get(reverse('productos:detalle', args=[self.producto.pk]))
-        self.assertTrue(respuesta.context['prediccion']['suficiente'])
-        self.assertContains(respuesta, "Demanda pronosticada")
+        self.assertTrue(respuesta.context['resultado_rop']['suficiente'])
+        self.assertIsNotNone(respuesta.context['resultado_rop']['rop'])
+        self.assertContains(respuesta, "Punto de Reorden")
+
+    def test_alerta_cuando_stock_es_menor_o_igual_al_rop(self):
+        # stock_total = 20 (12+8). Forzamos un ROP alto para que dispare la alerta.
+        self.producto.lead_time_dias = 100
+        self.producto.stock_seguridad = Decimal('100')
+        self.producto.save()
+        for mes, cantidad in [(1, 5), (2, 6), (3, 7)]:
+            mov = Movimiento.objects.create(
+                tipo=Movimiento.SALIDA, producto=self.producto,
+                almacen_origen=self.almacen_a, cantidad=Decimal(str(cantidad)),
+            )
+            Movimiento.objects.filter(pk=mov.pk).update(fecha=timezone.make_aware(datetime(2026, mes, 5)))
+
+        respuesta = self.client.get(reverse('productos:detalle', args=[self.producto.pk]))
+        self.assertTrue(respuesta.context['en_alerta'])
+        self.assertContains(respuesta, "se recomienda reabastecer")

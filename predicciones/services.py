@@ -57,3 +57,59 @@ def calcular_pronostico_ses(producto, periodos=1):
 def calcular_punto_reorden(demanda_diaria_promedio, tiempo_entrega_dias, stock_seguridad):
     """ROP = demanda_diaria_promedio * tiempo_entrega + stock_seguridad (RF012)."""
     return demanda_diaria_promedio * tiempo_entrega_dias + stock_seguridad
+
+
+# El pronóstico SES es mensual (ver obtener_historial_mensual); el ROP necesita
+# demanda diaria, así que se prorratea usando un mes estándar de 30 días.
+DIAS_POR_PERIODO = 30
+
+
+def calcular_rop_para_producto(producto, periodos=1, guardar=True):
+    """
+    Calcula el pronóstico SES y, a partir de él, el Punto de Reorden del
+    producto (RF012, HU008). Si `guardar` es True y hay datos suficientes,
+    persiste el resultado en PrediccionStock para que el panel de inventario
+    pueda leer el último ROP calculado sin volver a ejecutar SES en cada
+    carga (RNF Desempeño).
+    """
+    from .models import PrediccionStock  # import local: evita ciclo con productos/movimientos
+
+    resultado_ses = calcular_pronostico_ses(producto, periodos=periodos)
+    if not resultado_ses['suficiente']:
+        return {'suficiente': False, 'rop': None, 'ses': resultado_ses}
+
+    demanda_diaria = resultado_ses['pronostico'] / DIAS_POR_PERIODO
+    rop = calcular_punto_reorden(demanda_diaria, producto.lead_time_dias, float(producto.stock_seguridad))
+    rop = round(rop, 2)
+
+    if guardar:
+        PrediccionStock.objects.create(
+            producto=producto,
+            alpha_utilizado=resultado_ses['alpha'],
+            demanda_pronosticada=resultado_ses['pronostico'],
+            punto_reorden=rop,
+            periodos_calculados=periodos,
+        )
+
+    return {
+        'suficiente': True,
+        'rop': rop,
+        'demanda_diaria': round(demanda_diaria, 4),
+        'ses': resultado_ses,
+    }
+
+
+def ultimo_rop_por_producto():
+    """
+    Último Punto de Reorden calculado por producto (uno por producto, el más
+    reciente), para el panel de inventario. Devuelve {producto_id: rop}.
+    """
+    from .models import PrediccionStock
+
+    filas = (
+        PrediccionStock.objects
+        .order_by('producto_id', '-fecha_calculo')
+        .distinct('producto_id')
+        .values_list('producto_id', 'punto_reorden')
+    )
+    return dict(filas)

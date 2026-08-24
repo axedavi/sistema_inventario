@@ -88,6 +88,10 @@ class Producto(models.Model):
         verbose_name="Alpha (SES)",
         help_text="Parámetro de suavizamiento exponencial simple, entre 0 y 1 (RF013)."
     )
+    lead_time_dias = models.PositiveIntegerField(
+        default=1, verbose_name="Tiempo de entrega (días)",
+        help_text="Tiempo de entrega usado para calcular el Punto de Reorden (RF012, RF013)."
+    )
     activo = models.BooleanField(default=True, verbose_name="Activo")
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
