@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Panel de Inventario{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0"><i class="bi bi-clipboard-data"></i> Panel de Inventario</h3>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-auto">
+        <select name="almacen" class="form-select" onchange="this.form.submit()">
+            <option value="">Todos los almacenes</option>
+            {% for a in almacenes %}
+                <option value="{{ a.id }}" {% if almacen_seleccionado == a.id|stringformat:"s" %}selected{% endif %}>{{ a.nombre }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Código</th>
+                    <th>Producto</th>
+                    <th>Categoría</th>
+                    <th>Stock total</th>
+                    <th>Detalle por almacén</th>
+                    <th>Stock mínimo</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fila in filas %}
+                <tr class="{% if fila.en_alerta %}table-danger{% endif %}">
+                    <td>{{ fila.producto.codigo }}</td>
+                    <td>{{ fila.producto.nombre }}</td>
+                    <td>{{ fila.producto.categoria|default:"—" }}</td>
+                    <td class="fw-bold">{{ fila.stock_total }} {{ fila.producto.unidad.abreviatura }}</td>
+                    <td>
+                        {% for s in fila.stocks_por_almacen %}
+                            <span class="badge bg-secondary">{{ s.almacen.nombre }}: {{ s.cantidad }}</span>
+                        {% empty %}
+                            <span class="text-muted">Sin stock registrado</span>
+                        {% endfor %}
+                    </td>
+                    <td>{{ fila.producto.stock_minimo }}</td>
+                    <td>
+                        {% if fila.en_alerta %}
+                            <span class="badge bg-danger"><i class="bi bi-exclamation-triangle"></i> Reabastecer</span>
+                        {% else %}
+                            <span class="badge bg-success">Normal</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center text-muted py-4">No hay productos registrados todavía. Agrégalos desde el panel de administración.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

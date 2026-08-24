@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Lotes{% endblock %}
+{% block content %}
+<h3><i class="bi bi-upc-scan"></i> Trazabilidad por Lotes</h3>
+<p class="text-muted">La consulta del historial completo de un lote (HU006) se implementa en el Sprint 5.</p>
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Número de lote</th><th>Producto</th><th>Fecha ingreso</th><th>Fecha vencimiento</th><th>Cantidad inicial</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lote in lotes %}
+                <tr>
+                    <td>{{ lote.numero_lote }}</td>
+                    <td>{{ lote.producto }}</td>
+                    <td>{{ lote.fecha_ingreso|date:"d/m/Y" }}</td>
+                    <td>{{ lote.fecha_vencimiento|date:"d/m/Y"|default:"—" }}</td>
+                    <td>{{ lote.cantidad_inicial }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-4">Todavía no hay lotes registrados.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Predicción de Stock{% endblock %}
+{% block content %}
+<h3><i class="bi bi-graph-up-arrow"></i> Predicción de Stock y Punto de Reorden</h3>
+<p class="text-muted">El cálculo automático con Suavizamiento Exponencial Simple y el Punto de Reorden (HU007, HU008) se implementan en los Sprints 6 y 7.</p>
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Producto</th><th>Fecha de cálculo</th><th>Alpha</th><th>Demanda pronosticada</th><th>Punto de reorden</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in predicciones %}
+                <tr>
+                    <td>{{ p.producto }}</td>
+                    <td>{{ p.fecha_calculo|date:"d/m/Y H:i" }}</td>
+                    <td>{{ p.alpha_utilizado }}</td>
+                    <td>{{ p.demanda_pronosticada }}</td>
+                    <td>{{ p.punto_reorden }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-4">Todavía no se han calculado predicciones.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
