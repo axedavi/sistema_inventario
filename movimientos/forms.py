@@ -17,9 +17,9 @@ class MovimientoForm(forms.ModelForm):
 
     class Meta:
         model = Movimiento
-        fields = ['tipo', 'producto', 'almacen_origen', 'almacen_destino', 'lote', 'cantidad', 'motivo']
+        fields = ['tipo', 'producto', 'almacen_origen', 'almacen_destino', 'lote', 'cantidad', 'motivo', 'observacion']
         widgets = {
-            'motivo': forms.Textarea(attrs={'rows': 2}),
+            'observacion': forms.Textarea(attrs={'rows': 2}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -27,11 +27,6 @@ class MovimientoForm(forms.ModelForm):
         for nombre, field in self.fields.items():
             css = 'form-select' if isinstance(field.widget, forms.Select) else 'form-control'
             field.widget.attrs['class'] = css
-        # RF005 / HU003 cubren entrada, salida y transferencia; "Ajuste" queda
-        # reservado para correcciones administrativas fuera de este alcance.
-        self.fields['tipo'].choices = [
-            c for c in Movimiento.TIPO_CHOICES if c[0] != Movimiento.AJUSTE
-        ]
         self.fields['almacen_origen'].required = False
         self.fields['almacen_destino'].required = False
         self.fields['lote'].required = False
@@ -71,6 +66,16 @@ class MovimientoForm(forms.ModelForm):
             if origen and destino and origen == destino:
                 self.add_error('almacen_destino', "El almacén de destino debe ser distinto al de origen.")
 
+        elif tipo == Movimiento.AJUSTE:
+            if not origen:
+                self.add_error('almacen_origen', "Selecciona el almacén donde se dio de baja el producto.")
+            cleaned['almacen_destino'] = None
+
+        # Bitácora de movimientos: toda salida o baja de stock debe quedar
+        # registrada con su causa, no solo con la cantidad retirada.
+        if tipo in (Movimiento.SALIDA, Movimiento.AJUSTE) and not cleaned.get('motivo'):
+            self.add_error('motivo', "Selecciona el motivo de la salida o baja de stock.")
+
         if lote and producto and lote.producto_id != producto.id:
             self.add_error('lote', "El lote seleccionado no corresponde al producto elegido.")
 
@@ -84,8 +89,8 @@ class MovimientoForm(forms.ModelForm):
         if nuevo_numero and producto and Lote.objects.filter(producto=producto, numero_lote=nuevo_numero).exists():
             self.add_error('nuevo_lote_numero', "Ya existe un lote con ese número para este producto.")
 
-        # RF005 / HU003: rechazar salidas o transferencias mayores al stock disponible.
-        if tipo in (Movimiento.SALIDA, Movimiento.TRANSFERENCIA) and origen and producto and cantidad:
+        # RF005 / HU003: rechazar salidas, transferencias o ajustes mayores al stock disponible.
+        if tipo in (Movimiento.SALIDA, Movimiento.TRANSFERENCIA, Movimiento.AJUSTE) and origen and producto and cantidad:
             disponible = StockAlmacen.objects.filter(
                 producto=producto, almacen=origen
             ).values_list('cantidad', flat=True).first() or 0

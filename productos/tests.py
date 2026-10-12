@@ -73,3 +73,14 @@ class DetalleProductoTests(TestCase):
         respuesta = self.client.get(reverse('productos:detalle', args=[self.producto.pk]))
         self.assertTrue(respuesta.context['en_alerta'])
         self.assertContains(respuesta, "se recomienda reabastecer")
+
+    def test_bitacora_muestra_motivo_de_bajas_por_ajuste(self):
+        """Observación del tribunal: historial de bajas con motivo, por producto, para auditoría."""
+        Movimiento.objects.create(
+            tipo=Movimiento.AJUSTE, producto=self.producto, almacen_origen=self.almacen_a,
+            cantidad=Decimal('2'), motivo=Movimiento.MERMA, observacion='Conteo físico de bodega',
+        )
+        respuesta = self.client.get(reverse('productos:detalle', args=[self.producto.pk]))
+        self.assertContains(respuesta, "Merma")
+        self.assertContains(respuesta, "Conteo físico de bodega")
+        self.assertEqual(len(respuesta.context['bitacora']), 1)

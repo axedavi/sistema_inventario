@@ -49,10 +49,10 @@ def _crear_lote_de_entrada(movimiento, numero, vencimiento):
 def aplicar_movimiento(movimiento: Movimiento, nuevo_lote_numero=None, nuevo_lote_vencimiento=None) -> Movimiento:
     """
     Guarda `movimiento` (instancia sin pk) y aplica su efecto sobre StockAlmacen
-    de forma atomica: si no hay stock suficiente para una salida o transferencia,
-    no se guarda nada (RF005, HU003). En entradas, opcionalmente crea el lote
-    (RF008); en salidas/transferencias sin lote explícito, lo asigna por FIFO
-    (HU005).
+    de forma atomica: si no hay stock suficiente para una salida, ajuste o
+    transferencia, no se guarda nada (RF005, HU003). En entradas, opcionalmente
+    crea el lote (RF008); en salidas/ajustes/transferencias sin lote explícito,
+    lo asigna por FIFO (HU005).
     """
     if movimiento.tipo == Movimiento.ENTRADA:
         if nuevo_lote_numero:
@@ -61,7 +61,10 @@ def aplicar_movimiento(movimiento: Movimiento, nuevo_lote_numero=None, nuevo_lot
         destino.cantidad += movimiento.cantidad
         destino.save()
 
-    elif movimiento.tipo == Movimiento.SALIDA:
+    elif movimiento.tipo in (Movimiento.SALIDA, Movimiento.AJUSTE):
+        # El ajuste es una baja de stock por una causa distinta a la venta o
+        # el consumo normal (caducidad, merma, daño, conteo físico, etc.);
+        # descuenta stock igual que una salida (bitácora de movimientos).
         origen = _bloquear_o_crear_stock(movimiento.producto, movimiento.almacen_origen)
         if movimiento.cantidad > origen.cantidad:
             raise StockInsuficienteError(

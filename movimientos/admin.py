@@ -18,8 +18,8 @@ class MovimientoAdmin(admin.ModelAdmin):
     que actualiza StockAlmacen de forma atómica (RF005). Crear/editar aquí
     descuadraría el stock porque el admin no pasa por movimientos.services.
     """
-    list_display = ['fecha', 'tipo', 'producto', 'almacen_origen', 'almacen_destino', 'lote', 'cantidad', 'usuario']
-    list_filter = ['tipo', 'almacen_origen', 'almacen_destino']
+    list_display = ['fecha', 'tipo', 'producto', 'almacen_origen', 'almacen_destino', 'lote', 'cantidad', 'motivo', 'usuario']
+    list_filter = ['tipo', 'motivo', 'almacen_origen', 'almacen_destino']
     search_fields = ['producto__nombre', 'producto__codigo', 'lote__numero_lote']
     autocomplete_fields = ['producto', 'almacen_origen', 'almacen_destino', 'lote']
     date_hierarchy = 'fecha'

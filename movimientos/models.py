@@ -80,6 +80,29 @@ class Movimiento(models.Model):
         (AJUSTE, 'Ajuste'),
     ]
 
+    VENTA_CONSUMO = 'venta_consumo'
+    CADUCADO = 'caducado'
+    DETERIORADO = 'deteriorado'
+    DEFECTUOSO = 'defectuoso'
+    PERDIDA_CALIDAD = 'perdida_calidad'
+    MERMA = 'merma'
+    DANO_ALMACENAMIENTO = 'dano_almacenamiento'
+    DEVOLUCION = 'devolucion'
+    AJUSTE_CONTEO = 'ajuste_conteo'
+    OTRO = 'otro'
+    MOTIVO_CHOICES = [
+        (VENTA_CONSUMO, 'Venta o consumo de producción'),
+        (CADUCADO, 'Producto caducado'),
+        (DETERIORADO, 'Producto deteriorado'),
+        (DEFECTUOSO, 'Producto defectuoso'),
+        (PERDIDA_CALIDAD, 'Pérdida de calidad'),
+        (MERMA, 'Merma'),
+        (DANO_ALMACENAMIENTO, 'Daño durante almacenamiento'),
+        (DEVOLUCION, 'Devolución'),
+        (AJUSTE_CONTEO, 'Ajuste por conteo físico'),
+        (OTRO, 'Otra causa justificada'),
+    ]
+
     tipo = models.CharField(
         max_length=1, choices=TIPO_CHOICES,
         verbose_name="Tipo de movimiento"
@@ -109,7 +132,11 @@ class Movimiento(models.Model):
         max_digits=10, decimal_places=2,
         verbose_name="Cantidad"
     )
-    motivo = models.TextField(blank=True, verbose_name="Motivo / Observación")
+    motivo = models.CharField(
+        max_length=20, choices=MOTIVO_CHOICES, blank=True,
+        verbose_name="Motivo de la baja"
+    )
+    observacion = models.TextField(blank=True, verbose_name="Observación adicional")
     usuario = models.ForeignKey(
         User, on_delete=models.SET_NULL,
         null=True, verbose_name="Usuario"

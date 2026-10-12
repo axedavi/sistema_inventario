@@ -89,7 +89,7 @@ def _respuesta_excel(nombre_archivo, titulo_hoja, filas_encabezado, filas_datos,
 
 def exportar_movimientos(movimientos, formato):
     """RF015/RF017: reporte de movimientos con totales por tipo, en PDF o Excel."""
-    encabezado = ['Fecha', 'Tipo', 'Producto', 'Origen', 'Destino', 'Lote', 'Cantidad', 'Usuario']
+    encabezado = ['Fecha', 'Tipo', 'Producto', 'Origen', 'Destino', 'Lote', 'Cantidad', 'Motivo', 'Usuario']
     filas = [[
         m.fecha.strftime('%d/%m/%Y %H:%M'),
         m.get_tipo_display(),
@@ -98,6 +98,7 @@ def exportar_movimientos(movimientos, formato):
         str(m.almacen_destino or '—'),
         str(m.lote or '—'),
         str(m.cantidad),
+        m.get_motivo_display() or '—',
         str(m.usuario or '—'),
     ] for m in movimientos]
     totales = _totales_por_tipo(movimientos)

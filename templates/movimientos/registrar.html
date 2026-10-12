@@ -51,9 +51,15 @@
                             <label class="form-label">{{ form.nuevo_lote_vencimiento.label }}</label>
                             {{ form.nuevo_lote_vencimiento }}
                         </div>
-                        <div class="col-md-12">
-                            <label class="form-label">Motivo / Observación (opcional)</label>
+                        <div class="col-md-6" id="campo-motivo">
+                            <label class="form-label">{{ form.motivo.label }}</label>
                             {{ form.motivo }}
+                            {% if form.motivo.errors %}<div class="text-danger small">{{ form.motivo.errors|join:", " }}</div>{% endif %}
+                            <div class="form-text">Obligatorio en salidas y ajustes: identifica la causa de la baja de stock (venta, caducidad, merma, daño, conteo físico, etc.).</div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">{{ form.observacion.label }} (opcional)</label>
+                            {{ form.observacion }}
                         </div>
                     </div>
                     <button type="submit" class="btn btn-primary mt-4"><i class="bi bi-check2"></i> Registrar</button>
@@ -74,15 +80,18 @@
     const campoLoteExistente = document.getElementById('campo-lote-existente');
     const campoLoteNuevoNumero = document.getElementById('campo-lote-nuevo-numero');
     const campoLoteNuevoVencimiento = document.getElementById('campo-lote-nuevo-vencimiento');
+    const campoMotivo = document.getElementById('campo-motivo');
 
     function actualizarCampos() {
         const tipo = tipoSelect.value;
-        campoOrigen.style.display = (tipo === 'S' || tipo === 'T') ? '' : 'none';
+        campoOrigen.style.display = (tipo === 'S' || tipo === 'T' || tipo === 'A') ? '' : 'none';
         campoDestino.style.display = (tipo === 'E' || tipo === 'T') ? '' : 'none';
-        // El lote existente aplica a salidas/transferencias; el lote nuevo solo a entradas.
-        campoLoteExistente.style.display = (tipo === 'S' || tipo === 'T') ? '' : 'none';
+        // El lote existente aplica a salidas/ajustes/transferencias; el lote nuevo solo a entradas.
+        campoLoteExistente.style.display = (tipo === 'S' || tipo === 'T' || tipo === 'A') ? '' : 'none';
         campoLoteNuevoNumero.style.display = (tipo === 'E') ? '' : 'none';
         campoLoteNuevoVencimiento.style.display = (tipo === 'E') ? '' : 'none';
+        // El motivo (bitácora) es obligatorio en salidas y ajustes.
+        campoMotivo.style.display = (tipo === 'S' || tipo === 'A') ? '' : 'none';
     }
 
     if (tipoSelect) {

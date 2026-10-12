@@ -3,6 +3,7 @@ from django.db.models import Sum
 from django.shortcuts import get_object_or_404, render
 
 from almacenes.models import StockAlmacen
+from movimientos.models import Movimiento
 from predicciones.services import MINIMO_REGISTROS_HISTORICOS, calcular_rop_para_producto
 
 from .models import Producto
@@ -21,6 +22,12 @@ def detalle_producto(request, pk):
     resultado_rop = calcular_rop_para_producto(producto)
     en_alerta = resultado_rop['suficiente'] and stock_total <= resultado_rop['rop']
 
+    # Bitácora de movimientos (observación del tribunal): historial de bajas
+    # de stock del producto con su causa, para consulta y auditoría.
+    bitacora = Movimiento.objects.filter(
+        producto=producto, tipo__in=[Movimiento.SALIDA, Movimiento.AJUSTE]
+    ).select_related('almacen_origen', 'lote', 'usuario').order_by('-fecha')[:50]
+
     contexto = {
         'producto': producto,
         'stock_total': stock_total,
@@ -28,5 +35,6 @@ def detalle_producto(request, pk):
         'resultado_rop': resultado_rop,
         'en_alerta': en_alerta,
         'minimo_registros': MINIMO_REGISTROS_HISTORICOS,
+        'bitacora': bitacora,
     }
     return render(request, 'productos/detalle.html', contexto)

@@ -51,11 +51,54 @@ class RegistrarMovimientoTests(TestCase):
         StockAlmacen.objects.create(producto=self.producto, almacen=self.bodega_a, cantidad=Decimal('10'))
         respuesta = self._post({
             'tipo': Movimiento.SALIDA, 'producto': self.producto.id,
-            'almacen_origen': self.bodega_a.id, 'cantidad': '4',
+            'almacen_origen': self.bodega_a.id, 'cantidad': '4', 'motivo': Movimiento.VENTA_CONSUMO,
         })
         self.assertContains(respuesta, "Movimiento registrado")
         stock = StockAlmacen.objects.get(producto=self.producto, almacen=self.bodega_a)
         self.assertEqual(stock.cantidad, Decimal('6'))
+
+    def test_salida_sin_motivo_es_rechazada(self):
+        """Bitácora de movimientos: toda salida debe declarar su causa (observación del tribunal)."""
+        StockAlmacen.objects.create(producto=self.producto, almacen=self.bodega_a, cantidad=Decimal('10'))
+        respuesta = self._post({
+            'tipo': Movimiento.SALIDA, 'producto': self.producto.id,
+            'almacen_origen': self.bodega_a.id, 'cantidad': '4',
+        })
+        self.assertContains(respuesta, "Selecciona el motivo")
+        self.assertFalse(Movimiento.objects.exists())
+
+    def test_ajuste_valido_descuenta_stock_con_motivo_y_observacion(self):
+        StockAlmacen.objects.create(producto=self.producto, almacen=self.bodega_a, cantidad=Decimal('10'))
+        respuesta = self._post({
+            'tipo': Movimiento.AJUSTE, 'producto': self.producto.id,
+            'almacen_origen': self.bodega_a.id, 'cantidad': '3',
+            'motivo': Movimiento.MERMA, 'observacion': 'Detectado en conteo físico mensual',
+        })
+        self.assertContains(respuesta, "Movimiento registrado")
+        stock = StockAlmacen.objects.get(producto=self.producto, almacen=self.bodega_a)
+        self.assertEqual(stock.cantidad, Decimal('7'))
+        movimiento = Movimiento.objects.get()
+        self.assertEqual(movimiento.motivo, Movimiento.MERMA)
+        self.assertEqual(movimiento.observacion, 'Detectado en conteo físico mensual')
+
+    def test_ajuste_sin_motivo_es_rechazado(self):
+        StockAlmacen.objects.create(producto=self.producto, almacen=self.bodega_a, cantidad=Decimal('10'))
+        respuesta = self._post({
+            'tipo': Movimiento.AJUSTE, 'producto': self.producto.id,
+            'almacen_origen': self.bodega_a.id, 'cantidad': '3',
+        })
+        self.assertContains(respuesta, "Selecciona el motivo")
+        self.assertFalse(Movimiento.objects.exists())
+
+    def test_ajuste_mayor_a_stock_es_rechazado_y_no_modifica_stock(self):
+        StockAlmacen.objects.create(producto=self.producto, almacen=self.bodega_a, cantidad=Decimal('5'))
+        respuesta = self._post({
+            'tipo': Movimiento.AJUSTE, 'producto': self.producto.id,
+            'almacen_origen': self.bodega_a.id, 'cantidad': '9', 'motivo': Movimiento.CADUCADO,
+        })
+        self.assertContains(respuesta, "Stock insuficiente")
+        stock = StockAlmacen.objects.get(producto=self.producto, almacen=self.bodega_a)
+        self.assertEqual(stock.cantidad, Decimal('5'))
 
     def test_transferencia_mueve_stock_entre_almacenes(self):
         StockAlmacen.objects.create(producto=self.producto, almacen=self.bodega_a, cantidad=Decimal('20'))
@@ -148,7 +191,7 @@ class RegistroLoteTests(TestCase):
         )
         respuesta = self._post({
             'tipo': Movimiento.SALIDA, 'producto': self.producto.id,
-            'almacen_origen': self.bodega_a.id, 'cantidad': '15',
+            'almacen_origen': self.bodega_a.id, 'cantidad': '15', 'motivo': Movimiento.VENTA_CONSUMO,
         })
         self.assertContains(respuesta, "Movimiento registrado")
         movimiento = Movimiento.objects.get()
@@ -159,7 +202,7 @@ class RegistroLoteTests(TestCase):
         self._post({
             'tipo': Movimiento.SALIDA, 'producto': self.producto.id,
             'almacen_origen': self.bodega_a.id, 'cantidad': '5',
-            'lote': '',
+            'lote': '', 'motivo': Movimiento.VENTA_CONSUMO,
         })
         lote = Lote.objects.create(
             producto=self.producto, numero_lote='L-PROTEGIDO', fecha_ingreso=date.today(), cantidad_inicial=100
@@ -200,6 +243,7 @@ class DetalleLoteTests(TestCase):
         self._post({
             'tipo': Movimiento.SALIDA, 'producto': self.producto.id,
             'almacen_origen': self.bodega_a.id, 'cantidad': '6', 'lote': lote.id,
+            'motivo': Movimiento.VENTA_CONSUMO,
         })
 
         respuesta = self.client.get(reverse('movimientos:detalle_lote', args=[lote.pk]))
@@ -220,6 +264,7 @@ class DetalleLoteTests(TestCase):
         self._post({
             'tipo': Movimiento.SALIDA, 'producto': self.producto.id,
             'almacen_origen': self.bodega_a.id, 'cantidad': '5', 'lote': agotado.id,
+            'motivo': Movimiento.VENTA_CONSUMO,
         })
         agotado.refresh_from_db()
         self.assertEqual(agotado.estado, 'Agotado')
