@@ -90,6 +90,22 @@ class RegistrarMovimientoTests(TestCase):
         self.assertContains(respuesta, "Selecciona el motivo")
         self.assertFalse(Movimiento.objects.exists())
 
+    def test_ajuste_descuenta_las_unidades_del_lote(self):
+        """Una baja por ajuste retira unidades del lote, no solo del stock del almacén."""
+        StockAlmacen.objects.create(producto=self.producto, almacen=self.bodega_a, cantidad=Decimal('20'))
+        lote = Lote.objects.create(
+            producto=self.producto, numero_lote='L-AJUSTE',
+            fecha_ingreso=date.today(), cantidad_inicial=Decimal('20'),
+        )
+        self._post({
+            'tipo': Movimiento.AJUSTE, 'producto': self.producto.id,
+            'almacen_origen': self.bodega_a.id, 'cantidad': '8',
+            'motivo': Movimiento.CADUCADO, 'lote': lote.id,
+        })
+        lote.refresh_from_db()
+        self.assertEqual(lote.cantidad_consumida, Decimal('8'))
+        self.assertEqual(lote.cantidad_disponible, Decimal('12'))
+
     def test_ajuste_mayor_a_stock_es_rechazado_y_no_modifica_stock(self):
         StockAlmacen.objects.create(producto=self.producto, almacen=self.bodega_a, cantidad=Decimal('5'))
         respuesta = self._post({

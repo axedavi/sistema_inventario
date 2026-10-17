@@ -34,8 +34,10 @@ class Lote(models.Model):
 
     @property
     def cantidad_consumida(self):
+        # El ajuste también retira unidades del lote (merma, caducidad, daño),
+        # así que cuenta como consumo igual que una salida o transferencia.
         total = self.movimiento_set.filter(
-            tipo__in=[Movimiento.SALIDA, Movimiento.TRANSFERENCIA]
+            tipo__in=[Movimiento.SALIDA, Movimiento.TRANSFERENCIA, Movimiento.AJUSTE]
         ).aggregate(total=models.Sum('cantidad'))['total']
         return total or 0
 
